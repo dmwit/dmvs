@@ -1,10 +1,10 @@
 local socket =  require("socket.core")
 
 local isClient = false;
-
 local host = "0.0.0.0"
 
-if arg ~= nil and #arg > 0 then
+if arg == nil then arg = io.read() end
+if #arg > 0 then
 	host = arg
 	isClient = true
 end
