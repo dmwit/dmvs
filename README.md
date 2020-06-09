@@ -32,16 +32,34 @@ The script needs some arguments to describe how to connect with your playing par
 * **On Windows:** Type these arguments into the "script arguments" box in fceux's lua script loading dialog box when you load `dmvs.lua`.
 * **On Linux:** Type these arguments into fceux's stdin, all on a single line, then press enter. (The script *always* reads one line, so even if there are no arguments, you must press enter.)
 
-The script can run in two modes: host or client.
+There are two big choices to make: host or client, and direct or via a bouncer. One player must be a host, and the other must be a client.
+
+The other choice is a bit more complicated, and must be made by the host. If the host can make a port on their computer available to the wider Internet, then direct mode will have lower latency. If they cannot, then another alternative is to use a publically-hosted service on the Internet, and for both players to connect to that instead of directly to each other. (Instructions for setting up such a service yourself, or where to find an existing one, are in the works.)
 
 ### Host mode
 
-No arguments are needed. fceux will act as a server, listening on port 7777, for incoming connections. You should make sure that your computer's port 7777 is accessible from the Internet; e.g. by adding a port-forwarding rule to your router, if appropriate. (Coming soon: bouncer mode, in case you want to host but don't know what the previous sentence means.)
+You may supply the following arguments, in any order, separated by spaces. All of them are optional.
+
+* `--bouncer HOST` Connect to the `HOST` (a domain name or IP address), and use it as a bouncer. If not specified, the script will operate in direct mode instead.
+
+    Currently this flag is ignored: the script always runs in direct mode.
+
+* `--port N` In direct mode, listen on this port; in bouncer mode, connect to this port of the bouncer. Defaults to 7777.
+* `--require-combo` Instead of traditional vs. mode, play a modified mode where you win by clearing all viruses with a single combo. Any clear that doesn't complete the level will instead reset the level.
+
+    Currently this flag is ignored: the script always runs in traditional vs. mode.
 
 You will be player 1.
 
 ### Client mode
 
-You must give the address of a server to connect to. Your host will need to tell you an IP address or domain name that can be used to reach them.
+You must supply a host (a domain name or IP address in direct mode, or a connection number supplied to you by the host in bouncer mode). You may also supply the following arguments, in any order, separated by spaces, either before or after the host. All of them are optional.
+
+* `--bouncer HOST` Connect to the `HOST` (a domain name or IP address), and use it as a bouncer.  If not specified, the script will operate in direct mode instead.
+
+    Currently this flag is ignored: the script always runs in direct mode.
+
+* `--port N` Connect to this port on the host (in direct mode) or bouncer (in bouncer mode). Defaults to 7777.
+* `--require-combo` You may specify this, but it is ignored. Whether combos are required or not is chosen by the host.
 
 You will be player 2.

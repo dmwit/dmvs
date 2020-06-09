@@ -1,13 +1,36 @@
 local socket =  require("socket.core")
 
-local isClient = false;
+local isClient = false
 local host = "0.0.0.0"
+local bouncer = nil
+local port = 7777
+local combosOnly = false
 
 if arg == nil then arg = io.read() end
-if #arg > 0 then
-	host = arg
-	isClient = true
+
+local argWords = {}
+for word in arg:gmatch("([^%s]+)") do table.insert(argWords, word) end
+local i = 1
+while i <= #argWords do
+	local word = argWords[i]
+	if word == "--bouncer" then
+		bouncer = argWords[i+1]
+		i = i+1
+	elseif word == "--port" then
+		port = tonumber(argWords[i+1])
+		i = i+1
+	elseif word == "--require-combo" then
+		combosOnly = true
+	else
+		host = word
+		isClient = true
+	end
+	i = i+1
 end
+-- erase all traces of our temporary variables
+argWord = nil
+i = nil
+word = nil
 
 local function getReadAddress(address)
 	if isClient then 
@@ -43,7 +66,6 @@ end
 
 local connectionMessageTimer = 0
 
-local port = 7777
 local dataSocket = nil
 local send = true
 
