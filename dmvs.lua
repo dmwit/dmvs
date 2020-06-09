@@ -27,6 +27,7 @@ while i <= #argWords do
 	end
 	i = i+1
 end
+
 -- erase all traces of our temporary variables
 argWord = nil
 i = nil
@@ -63,8 +64,6 @@ local function getLevelDataWriteAddress(address)
 		return address+0x100
 	end
 end
-
-local connectionMessageTimer = 0
 
 local dataSocket = nil
 local send = true
@@ -106,30 +105,43 @@ local function insertKeyFrame(messages, index)
 	end
 end
 
+local MESSAGE = {
+	SET_GAME_STATE = 0,
+	SET_CURRENT_POS = 1,
+	UNASSIGNED_2 = 2,
+	REQUEST_START = 3,
+	REQUEST_CONTINUE = 4,
+	SET_SPEED = 5,
+	SET_LEVEL = 6,
+	ADD_KEYFRAME = 7,
+	UNASSIGNED_8 = 8,
+	REQUEST_LOSS = 9
+}
+
 local function consumeMessage(messages, index)
 	messageType = messages:sub(index,index):byte()
-	if messageType == 0 then	
+	if messageType == MESSAGE.SET_GAME_STATE then	
 		remoteGameState = messages:sub(index+1,index+1):byte()
 		return index+2
-	elseif messageType == 1 then
+	elseif messageType == MESSAGE.SET_CURRENT_POS then
 		remoteCurrent = messages:sub(index+1,index+3)
 		return index+4
-	elseif messageType == 3 then
+	elseif messageType == MESSAGE.REQUEST_START then
 		startRequested = 1
 		startSeed = {messages:sub(index+1,index+1):byte(), messages:sub(index+2,index+2):byte()}
 		return index+3
-	elseif messageType == 4 then
+	elseif messageType == MESSAGE.REQUEST_CONTINUE then
 		continueRequested = 1
 		return index+1
-	elseif messageType == 5 then
+	elseif messageType == MESSAGE.SET_SPEED then
 		memory.writebyte(getWriteAddress(0x030B), messages:sub(index+1,index+1):byte());
 		return index+2
-	elseif messageType == 6 then
+	elseif messageType == MESSAGE.SET_LEVEL then
 		memory.writebyte(getWriteAddress(0x0316), messages:sub(index+1,index+1):byte());
 		return index+2
-	elseif messageType == 7 then
+	elseif messageType == MESSAGE.ADD_KEYFRAME then
 		return insertKeyFrame(messages,index+1)
-	elseif messageType == 9 then
+	elseif messageType == MESSAGE.REQUEST_LOSS then
 		lossRequested = 1
 		return index+1
 	end
@@ -148,38 +160,38 @@ local function buildMessages()
 	dataOut = ""
 	current = string.char(memory.readbyte(getReadAddress(0x305)))..string.char(memory.readbyte(getReadAddress(0x306)))..string.char(memory.readbyte(getReadAddress(0x325)))
 	if current ~= _current then
-		dataOut = dataOut..string.char(1)..current
+		dataOut = dataOut..string.char(MESSAGE.SET_CURRENT_POS)..current
 		_current = current
 	end
 	speed = memory.readbyte(getReadAddress(0x030B))
 	if speed ~= _speed then
-		dataOut = dataOut..string.char(5)..string.char(speed)
+		dataOut = dataOut..string.char(MESSAGE.SET_SPEED)..string.char(speed)
 		_speed = speed
 	end
 	level = memory.readbyte(getReadAddress(0x0316))
 	if level ~= _level then
-		dataOut = dataOut..string.char(6)..string.char(level)
+		dataOut = dataOut..string.char(MESSAGE.SET_LEVEL)..string.char(level)
 		_level = level
 	end
 	state = memory.readbyte(0x0046)
 	if state ~= _state then
-		dataOut = dataOut..string.char(0)..string.char(state)
+		dataOut = dataOut..string.char(MESSAGE.SET_GAME_STATE)..string.char(state)
 		_state = state
 	end
 	if requestStart == 1 then
-		dataOut = dataOut..string.char(3)..table.concat(startSeed)
+		dataOut = dataOut..string.char(MESSAGE.REQUEST_START)..table.concat(startSeed)
 		requestStart = 0
 	end
 	if requestContinue == 1 then
-		dataOut = dataOut..string.char(4)
+		dataOut = dataOut..string.char(MESSAGE.REQUEST_CONTINUE)
 		requestContinue = 0
 	end
 	while #keyFramesOut > 0 do
 		keyFrameOut = table.remove(keyFramesOut,1)
-		dataOut = dataOut..string.char(7)..keyFrameOut
+		dataOut = dataOut..string.char(MESSAGE.ADD_KEYFRAME)..keyFrameOut
 	end
 	if requestLoss == 1 then
-		dataOut = dataOut..string.char(9)
+		dataOut = dataOut..string.char(MESSAGE.REQUEST_LOSS)
 		requestLoss = 0
 	end
 	return dataOut
