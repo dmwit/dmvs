@@ -5,7 +5,7 @@
 ## Installation
 
 1. Install [fceux](http://www.fceux.com).
-2. Install [luasocket](http://w3.impa.br/~diego/software/luasocket/). The linked site has binaries for Windows; on Linux:
+2. If you are using Linux, install [luasocket](http://w3.impa.br/~diego/software/luasocket/) (Windows' fceux comes with this bundled).
 
     1. Grab a copy of the source.
     2. `make`
