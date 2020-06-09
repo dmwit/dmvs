@@ -24,7 +24,7 @@
 
 1. Start up fceux.
 2. Load the Dr. Mario ROM.
-3. Load this script with appropriate arguments (see below).
+3. Load this script with appropriate arguments (see below). If you're faster than your partner, emulation may pause until they connect; this is normal.
 4. Visit the 2-player level select screen, and toggle in your favorite settings. If you are the host, hit start when both players are ready; otherwise wait impatiently for your idiot host to press the gosh darn button already, heck!
 
 The script needs some arguments to describe how to connect with your playing partner.
