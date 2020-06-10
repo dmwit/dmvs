@@ -5,6 +5,9 @@ local host = "0.0.0.0"
 local bouncer = nil
 local port = 7777
 local combosOnly = false
+local flowControl = 0
+
+local flowControlOptions = {NONE=0,["ONE-TO-ONE"]=1}
 
 if arg == nil then arg = io.read() end
 
@@ -21,12 +24,17 @@ while i <= #argWords do
 		i = i+1
 	elseif word == "--require-combo" then
 		combosOnly = true
+	elseif word == "--flow-control" then
+		i = i+1
+		flowControl = flowControlOptions[argWords[i]] ~= nil and flowControlOptions[argWords[i]] or 0
 	else
 		host = word
 		isClient = true
 	end
 	i = i+1
 end
+
+print(flowControl)
 
 -- erase all traces of our temporary variables
 argWord = nil
@@ -196,10 +204,11 @@ local function buildMessages()
 	end
 	return dataOut
 end
- 
+
 local function comm(r)
 	local dataCount = 0 
 	local data = nil
+	local send = true
 	while true do
 		if dataSocket == nil then
 			if isClient then
@@ -222,6 +231,7 @@ local function comm(r)
 			end
 			if dataSocket ~=nil then 
 				dataSocket:setoption('tcp-nodelay',true)
+				send = true
 				emu.message("Connected")
 			end
 		else 
@@ -231,6 +241,7 @@ local function comm(r)
 				if data ~= nil then
 					dataCount = data:sub(1,1):byte()
 					if (dataCount == 0) then
+						send = true
 					end
 					data = nil
 				end
@@ -239,9 +250,9 @@ local function comm(r)
 				dataSocket:settimeout(0)
 				data, status = dataSocket:receive(dataCount)
 				if data ~= nil then
+					send = true
 					dataCount = 0	
 				end
-				
 			end
 			if status == "closed" then
 				emu.message("Disconnected")
@@ -249,10 +260,17 @@ local function comm(r)
 				dataSocket = nil
 				dataCount = 0
 			end
-			messages = buildMessages()
-			if string.len(messages) > 0 then
+			if flowControl == flowControlOptions.NONE then 
+				messages = buildMessages()
+				if string.len(messages) > 0 then
+					dataSocket:settimeout(0)
+					dataSocket:send(string.char(string.len(messages))..messages)
+				end
+			elseif send == true then
+				messages = buildMessages()
 				dataSocket:settimeout(0)
 				dataSocket:send(string.char(string.len(messages))..messages)
+				send = false
 			end
 		end
 		request = coroutine.yield(data)
