@@ -34,8 +34,6 @@ while i <= #argWords do
 	i = i+1
 end
 
-print(flowControl)
-
 -- erase all traces of our temporary variables
 argWord = nil
 i = nil
