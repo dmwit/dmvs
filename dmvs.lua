@@ -10,6 +10,7 @@ local port = 7777
 local gameMode = GAME_MODE.NORMAL
 local flowControl = 0
 local bouncerConnected = false
+local speedReset = 1
 
 if arg == nil then arg = io.read() end
 
