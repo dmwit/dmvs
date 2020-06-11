@@ -551,45 +551,44 @@ while true do
 				end
 				memory.writebyte(getWriteAddress(0x0312),0x00)
 			end
-		else
-			if gameMode == GAME_MODE.NORMAL then 
-				if memory.readbyte(getWriteAddress(0x0317)) == 2 and #keyFramesIn > 0 and keyFramesIn[1]:sub(1,1):byte() > 1 then
-					garbageIn = table.remove(keyFramesIn,1)
-					garbageCount = garbageIn:sub(1,1):byte()
-					levelDataPointer = getLevelDataWriteAddress(0x400)
-					firstGarbage = levelDataPointer+garbageIn:sub(2,2):byte()
-					memory.writebyte(firstGarbage,garbageIn:sub(3,3):byte())
-					if garbageCount == 2 then
-						memory.writebyte(firstGarbage+4,garbageIn:sub(4,4):byte())
-					else
-						memory.writebyte(firstGarbage+2,garbageIn:sub(4,4):byte())
-						memory.writebyte(firstGarbage+4,garbageIn:sub(5,5):byte())
-						if garbageCount > 3 then
-							memory.writebyte(firstGarbage+6,garbageIn:sub(6,6):byte())
-						end
+		elseif gameMode == GAME_MODE.NORMAL then 
+			if memory.readbyte(getWriteAddress(0x0317)) == 2 and #keyFramesIn > 0 and keyFramesIn[1]:sub(1,1):byte() > 1 then
+				garbageIn = table.remove(keyFramesIn,1)
+				garbageCount = garbageIn:sub(1,1):byte()
+				levelDataPointer = getLevelDataWriteAddress(0x400)
+				firstGarbage = levelDataPointer+garbageIn:sub(2,2):byte()
+				memory.writebyte(firstGarbage,garbageIn:sub(3,3):byte())
+				if garbageCount == 2 then
+					memory.writebyte(firstGarbage+4,garbageIn:sub(4,4):byte())
+				else
+					memory.writebyte(firstGarbage+2,garbageIn:sub(4,4):byte())
+					memory.writebyte(firstGarbage+4,garbageIn:sub(5,5):byte())
+					if garbageCount > 3 then
+						memory.writebyte(firstGarbage+6,garbageIn:sub(6,6):byte())
 					end
-					memory.writebyte(getWriteAddress(0x0317),1) 
 				end
-			elseif gameMode == GAME_MODE["REQUIRE-COMBOS"] then
-				for playerNo = 0, 1, 1 do
-					if memory.readbyte(0x317+playerNo*0x80) == 2 and memory.readbyte(0x324+playerNo*0x80) ~= memory.readbyte(0x330+playerNo*0x80) then
-						for i = 0, 127, 1 do
-							memory.writebyte(0x0400+playerNo*0x100+i,memory.readbyte(0x480+playerNo*0x100+i))
-							memory.writebyte(0x300+playerNo*0x80,0x0F)
-						end
-						memory.writebyte(0x31a+playerNo*0x80,memory.readbyte(baseLeftHalves+memory.readbyte(0x781)))
-						memory.writebyte(0x31b+playerNo*0x80,memory.readbyte(baseRightHalves+memory.readbyte(0x781)))
-						memory.writebyte(0x327+playerNo*0x80,2)
-						memory.writebyte(0x324+playerNo*0x80,memory.readbyte(0x330+playerNo*0x80))
-						if speedReset == 1 then
-							memory.writebyte(0x30A+playerNo*0x80,0x00)
-							memory.writebyte(0x310+playerNo*0x80,0x01)
-						end
+				memory.writebyte(getWriteAddress(0x0317),1) 
+			end
+		end
+		if gameMode == GAME_MODE["REQUIRE-COMBOS"] then
+			for playerNo = 0, 1, 1 do
+				if memory.readbyte(0x317+playerNo*0x80) == 2 and memory.readbyte(0x324+playerNo*0x80) ~= memory.readbyte(0x330+playerNo*0x80) then
+					for i = 0, 127, 1 do
+						memory.writebyte(0x0400+playerNo*0x100+i,memory.readbyte(0x480+playerNo*0x100+i))
+						memory.writebyte(0x300+playerNo*0x80,0x0F)
 					end
-					if speedReset == 2 then
+					memory.writebyte(0x31a+playerNo*0x80,memory.readbyte(baseLeftHalves+memory.readbyte(0x781)))
+					memory.writebyte(0x31b+playerNo*0x80,memory.readbyte(baseRightHalves+memory.readbyte(0x781)))
+					memory.writebyte(0x327+playerNo*0x80,2)
+					memory.writebyte(0x324+playerNo*0x80,memory.readbyte(0x330+playerNo*0x80))
+					if speedReset == 1 then
 						memory.writebyte(0x30A+playerNo*0x80,0x00)
 						memory.writebyte(0x310+playerNo*0x80,0x01)
 					end
+				end
+				if speedReset == 2 then
+					memory.writebyte(0x30A+playerNo*0x80,0x00)
+					memory.writebyte(0x310+playerNo*0x80,0x01)
 				end
 			end
 		end
