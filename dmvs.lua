@@ -1,7 +1,7 @@
 local socket =  require("socket.core")
 
 local FLOW_CONTROL_OPTION = {NONE=0,["ONE-TO-ONE"]=1}
-local GAME_MODE = {NORMAL=0}
+local GAME_MODE = {NORMAL=0,["REQUIRE-COMBOS"]=1}
 
 local isClient = false
 local host = "0.0.0.0"
@@ -26,7 +26,7 @@ while i <= #argWords do
 		i = i+1
 		port = tonumber(argWords[i])
 	elseif word == "--require-combo" then
-		gameMode = GAME_MODE["COMBOS-ONLY"]
+		gameMode = GAME_MODE["REQUIRE-COMBOS"]
 	elseif word == "--flow-control" then
 		i = i+1
 		flowControl = FLOW_CONTROL_OPTION[argWords[i]] ~= nil and FLOW_CONTROL_OPTION[argWords[i]] or 0
@@ -159,8 +159,10 @@ local function consumeMessage(messages, index)
 		return index+1
 	elseif messageType == MESSAGE.INIT then
 		if isClient then
+			print("init")
 			flowControl = messages:sub(index+1,index+1):byte()
 			gameMode = messages:sub(index+2,index+2):byte()
+			print(gameMode)
 		end
 		if not initSent then
 			sendInit = true
@@ -221,13 +223,13 @@ local function buildMessages()
 	end
 	if sendInit == true then
 		if not isClient then 
-			dataOut = dataOut..string.char(MESSAGE.INIT)
+			dataOut = dataOut..string.char(MESSAGE.INIT)..string.char(flowControl)..string.char(gameMode)
 		end
 		initSent = true
 		sendInit = false
 	end
 	if (sendGreeting) then
-		dataOut = dataOut..string.char(MESSAGE.GREETING)..string.char(flowControl)..string.char(gameMode)
+		dataOut = dataOut..string.char(MESSAGE.GREETING)
 		sendGreeting = false
 	end
 	return dataOut
@@ -397,17 +399,22 @@ local function handleContinue()
 end
 
 local function collectGarbage2() 
-	table.insert(keyFramesOut,string.char(2)..string.char(memory.readbyte(0x43)%4)..string.char(memory.readbyte(getWriteAddress(0x329))+0x80)..string.char(memory.readbyte(getWriteAddress(0x32A))+0x80))
+	if gameMode == GAME_MODE.NORMAL then
+		table.insert(keyFramesOut,string.char(2)..string.char(memory.readbyte(0x43)%4)..string.char(memory.readbyte(getWriteAddress(0x329))+0x80)..string.char(memory.readbyte(getWriteAddress(0x32A))+0x80))
+	end
 end
-
+	
 local function collectGarbage3() 
-	table.insert(keyFramesOut,string.char(3)..string.char(memory.readbyte(0x43)%4)..string.char(memory.readbyte(getWriteAddress(0x329))+0x80)..string.char(memory.readbyte(getWriteAddress(0x32A))+0x80)..string.char(memory.readbyte(getWriteAddress(0x32B))+0x80))
+	if gameMode == GAME_MODE.NORMAL then
+		table.insert(keyFramesOut,string.char(3)..string.char(memory.readbyte(0x43)%4)..string.char(memory.readbyte(getWriteAddress(0x329))+0x80)..string.char(memory.readbyte(getWriteAddress(0x32A))+0x80)..string.char(memory.readbyte(getWriteAddress(0x32B))+0x80))
+	end
 end
 
 local function collectGarbage4() 
-	table.insert(keyFramesOut,string.char(4)..string.char(memory.readbyte(0x43)%2)..string.char(memory.readbyte(getWriteAddress(0x329))+0x80)..string.char(memory.readbyte(getWriteAddress(0x32A))+0x80)..string.char(memory.readbyte(getWriteAddress(0x32B))+0x80)..string.char(memory.readbyte(getWriteAddress(0x32C))+0x80))
+	if gameMode == GAME_MODE.NORMAL then
+		table.insert(keyFramesOut,string.char(4)..string.char(memory.readbyte(0x43)%2)..string.char(memory.readbyte(getWriteAddress(0x329))+0x80)..string.char(memory.readbyte(getWriteAddress(0x32A))+0x80)..string.char(memory.readbyte(getWriteAddress(0x32B))+0x80)..string.char(memory.readbyte(getWriteAddress(0x32C))+0x80))
+	end
 end
-
 
 local baseLeftHalves = (memory.readbyte(0xFFF0) == 0x2D) and 0xA817 or 0xA7FD
 local baseRightHalves = (memory.readbyte(0xFFF0) == 0x2D) and 0xA820 or  0xA806
@@ -435,12 +442,35 @@ local function waitForNext()
 	end
 end
 
-local function preventLocalGarbage()
-	if memory.readbyte(0x58) == (isClient and 5 or 4) then
+local function preventGarbage()
+	if gameMode == GAME_MODE["REQUIRE-COMBOS"] or memory.readbyte(0x58) == (isClient and 5 or 4) then
 		memory.writebyte(0x98,0x00)
 	end
 end
 
+local function duplicateLevelData()
+	if gameMode == GAME_MODE["REQUIRE-COMBOS"] then 
+		memory.writebyte((memory.readbyte(0x57)+(memory.readbyte(0x58)*256))+0x80,memory.getregister('a'))
+		if memory.readbyte(0x316) == memory.readbyte(0x396) then
+			memory.writebyte((memory.readbyte(0x57)+(memory.readbyte(0x58)*256))+0x180,memory.getregister('a'))
+		end
+	end
+end
+
+local function recordStart()
+	if gameMode == GAME_MODE["REQUIRE-COMBOS"] then 
+		for playerNo = 0, 1, 1 do
+			memory.writebyte(0x330+playerNo*0x80,memory.readbyte(0x324+playerNo*0x80))
+		end
+	end
+end
+
+
+local function oneVirusPerLevel()
+	if gameMode == GAME_MODE["REQUIRE-COMBOS"] then 
+		memory.setregister('a',(memory.getregister('a')/4)+1)
+	end
+end
 
 if memory.readbyte(0xFFF0) == 0x2D then 
 	memory.registerexec(0x815B,handleStart)
@@ -453,7 +483,12 @@ if memory.readbyte(0xFFF0) == 0x2D then
 	memory.registerexec(0x9C4E,collectGarbage3)
 	memory.registerexec(0x9C6D,collectGarbage4)
 	memory.registerexec(0x9CAA,waitForNext)
-	memory.registerexec(0x9C0E,preventLocalGarbage)
+	memory.registerexec(0x9C0E,preventGarbage)
+	memory.registerexec(0x9E28,duplicateLevelData)
+	memory.registerexec(0x9D01,recordStart)
+	memory.registerexec(0x8291,oneVirusPerLevel)
+	memory.registerexec(0x829C,oneVirusPerLevel)
+	
 else
 	memory.registerexec(0x814B,handleStart)
 	memory.registerexec(0x99DF,handleStart1)
@@ -465,7 +500,11 @@ else
 	memory.registerexec(0x9C34,collectGarbage3)
 	memory.registerexec(0x9C55,collectGarbage4)
 	memory.registerexec(0x9C90,waitForNext)
-	memory.registerexec(0x9BF4,preventLocalGarbage)
+	memory.registerexec(0x9BF4,preventGarbage)
+	memory.registerexec(0x9E0E,duplicateLevelData)
+	memory.registerexec(0x9CE7,recordStart)
+	memory.registerexec(0x8281,oneVirusPerLevel)
+	memory.registerexec(0x828C,oneVirusPerLevel)
 end
 
 local lastState = 0
@@ -513,22 +552,47 @@ while true do
 				end
 				memory.writebyte(getWriteAddress(0x0312),0x00)
 			end
-		elseif memory.readbyte(getWriteAddress(0x0317)) == 2 and #keyFramesIn > 0 and keyFramesIn[1]:sub(1,1):byte() > 1 then
-			garbageIn = table.remove(keyFramesIn,1)
-			garbageCount = garbageIn:sub(1,1):byte()
-			levelDataPointer = getLevelDataWriteAddress(0x400)
-			firstGarbage = levelDataPointer+garbageIn:sub(2,2):byte()
-			memory.writebyte(firstGarbage,garbageIn:sub(3,3):byte())
-			if garbageCount == 2 then
-				memory.writebyte(firstGarbage+4,garbageIn:sub(4,4):byte())
-			else
-				memory.writebyte(firstGarbage+2,garbageIn:sub(4,4):byte())
-				memory.writebyte(firstGarbage+4,garbageIn:sub(5,5):byte())
-				if garbageCount > 3 then
-					memory.writebyte(firstGarbage+6,garbageIn:sub(6,6):byte())
+		else
+			if gameMode == GAME_MODE.NORMAL then 
+				if memory.readbyte(getWriteAddress(0x0317)) == 2 and #keyFramesIn > 0 and keyFramesIn[1]:sub(1,1):byte() > 1 then
+					garbageIn = table.remove(keyFramesIn,1)
+					garbageCount = garbageIn:sub(1,1):byte()
+					levelDataPointer = getLevelDataWriteAddress(0x400)
+					firstGarbage = levelDataPointer+garbageIn:sub(2,2):byte()
+					memory.writebyte(firstGarbage,garbageIn:sub(3,3):byte())
+					if garbageCount == 2 then
+						memory.writebyte(firstGarbage+4,garbageIn:sub(4,4):byte())
+					else
+						memory.writebyte(firstGarbage+2,garbageIn:sub(4,4):byte())
+						memory.writebyte(firstGarbage+4,garbageIn:sub(5,5):byte())
+						if garbageCount > 3 then
+							memory.writebyte(firstGarbage+6,garbageIn:sub(6,6):byte())
+						end
+					end
+					memory.writebyte(getWriteAddress(0x0317),1) 
+				end
+			elseif gameMode == GAME_MODE["REQUIRE-COMBOS"] then
+				for playerNo = 0, 1, 1 do
+					if memory.readbyte(0x317+playerNo*0x80) == 2 and memory.readbyte(0x324+playerNo*0x80) ~= memory.readbyte(0x330+playerNo*0x80) then
+						for i = 0, 127, 1 do
+							memory.writebyte(0x0400+playerNo*0x100+i,memory.readbyte(0x480+playerNo*0x100+i))
+							memory.writebyte(0x300+playerNo*0x80,0x0F)
+						end
+						memory.writebyte(0x31a+playerNo*0x80,memory.readbyte(baseLeftHalves+memory.readbyte(0x781)))
+						memory.writebyte(0x31b+playerNo*0x80,memory.readbyte(baseRightHalves+memory.readbyte(0x781)))
+						memory.writebyte(0x327+playerNo*0x80,2)
+						memory.writebyte(0x324+playerNo*0x80,memory.readbyte(0x330+playerNo*0x80))
+						if speedReset == 1 then
+							memory.writebyte(0x30A+playerNo*0x80,0x00)
+							memory.writebyte(0x310+playerNo*0x80,0x01)
+						end
+					end
+					if speedReset == 2 then
+						memory.writebyte(0x30A+playerNo*0x80,0x00)
+						memory.writebyte(0x310+playerNo*0x80,0x01)
+					end
 				end
 			end
-			memory.writebyte(getWriteAddress(0x0317),1) 
 		end
 	else
 		remoteCurrent = nil
