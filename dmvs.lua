@@ -159,10 +159,8 @@ local function consumeMessage(messages, index)
 		return index+1
 	elseif messageType == MESSAGE.INIT then
 		if isClient then
-			print("init")
 			flowControl = messages:sub(index+1,index+1):byte()
 			gameMode = messages:sub(index+2,index+2):byte()
-			print(gameMode)
 		end
 		if not initSent then
 			sendInit = true
