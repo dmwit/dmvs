@@ -1,13 +1,15 @@
 local socket =  require("socket.core")
 
+local FLOW_CONTROL_OPTION = {NONE=0,["ONE-TO-ONE"]=1}
+local GAME_MODE = {NORMAL=0}
+
 local isClient = false
 local host = "0.0.0.0"
 local bouncer = nil
 local port = 7777
-local combosOnly = false
+local gameMode = GAME_MODE.NORMAL
 local flowControl = 0
-
-local flowControlOptions = {NONE=0,["ONE-TO-ONE"]=1}
+local bouncerConnected = false
 
 if arg == nil then arg = io.read() end
 
@@ -17,19 +19,20 @@ local i = 1
 while i <= #argWords do
 	local word = argWords[i]
 	if word == "--bouncer" then
-		bouncer = argWords[i+1]
 		i = i+1
+		bouncer = argWords[i]
+		isClient = bouncer ~= "host"
 	elseif word == "--port" then
-		port = tonumber(argWords[i+1])
 		i = i+1
+		port = tonumber(argWords[i])
 	elseif word == "--require-combo" then
-		combosOnly = true
+		gameMode = GAME_MODE["COMBOS-ONLY"]
 	elseif word == "--flow-control" then
 		i = i+1
-		flowControl = flowControlOptions[argWords[i]] ~= nil and flowControlOptions[argWords[i]] or 0
+		flowControl = FLOW_CONTROL_OPTION[argWords[i]] ~= nil and FLOW_CONTROL_OPTION[argWords[i]] or 0
 	else
 		host = word
-		isClient = true
+		isClient = bouncer ~= "host"
 	end
 	i = i+1
 end
@@ -96,6 +99,10 @@ local keyFramesOut = {}
 local requestLoss = 0
 local lossRequested = 0
 
+local sendGreeting = false
+
+local sendInit = false
+local initSent = false
 
 local function insertKeyFrame(messages, index)
 	type = messages:sub(index):byte()
@@ -114,13 +121,13 @@ end
 local MESSAGE = {
 	SET_GAME_STATE = 0,
 	SET_CURRENT_POS = 1,
-	UNASSIGNED_2 = 2,
+	GREETING = 2,
 	REQUEST_START = 3,
 	REQUEST_CONTINUE = 4,
 	SET_SPEED = 5,
 	SET_LEVEL = 6,
 	ADD_KEYFRAME = 7,
-	UNASSIGNED_8 = 8,
+	INIT = 8,
 	REQUEST_LOSS = 9
 }
 
@@ -150,6 +157,18 @@ local function consumeMessage(messages, index)
 	elseif messageType == MESSAGE.REQUEST_LOSS then
 		lossRequested = 1
 		return index+1
+	elseif messageType == MESSAGE.INIT then
+		if isClient then
+			flowControl = messages:sub(index+1,index+1):byte()
+			gameMode = messages:sub(index+2,index+2):byte()
+		end
+		if not initSent then
+			sendInit = true
+		end
+		return index+3
+	elseif messageType == MESSAGE.GREETING then
+		sendInit = true
+		return index+1
 	end
 end
 
@@ -170,17 +189,17 @@ local function buildMessages()
 		_current = current
 	end
 	speed = memory.readbyte(getReadAddress(0x030B))
-	if speed ~= _speed then
+	if speed ~= _speed or sendInit then
 		dataOut = dataOut..string.char(MESSAGE.SET_SPEED)..string.char(speed)
 		_speed = speed
 	end
 	level = memory.readbyte(getReadAddress(0x0316))
-	if level ~= _level then
+	if level ~= _level or sendInit then
 		dataOut = dataOut..string.char(MESSAGE.SET_LEVEL)..string.char(level)
 		_level = level
 	end
 	state = memory.readbyte(0x0046)
-	if state ~= _state then
+	if state ~= _state  or sendInit then
 		dataOut = dataOut..string.char(MESSAGE.SET_GAME_STATE)..string.char(state)
 		_state = state
 	end
@@ -200,6 +219,17 @@ local function buildMessages()
 		dataOut = dataOut..string.char(MESSAGE.REQUEST_LOSS)
 		requestLoss = 0
 	end
+	if sendInit == true then
+		if not isClient then 
+			dataOut = dataOut..string.char(MESSAGE.INIT)
+		end
+		initSent = true
+		sendInit = false
+	end
+	if (sendGreeting) then
+		dataOut = dataOut..string.char(MESSAGE.GREETING)..string.char(flowControl)..string.char(gameMode)
+		sendGreeting = false
+	end
 	return dataOut
 end
 
@@ -209,10 +239,15 @@ local function comm(r)
 	local send = true
 	while true do
 		if dataSocket == nil then
-			if isClient then
+			if isClient or bouncer ~= nil then
 				dataSocket = socket.tcp()
 				if not dataSocket:connect(host,port) then
 					dataSocket = nil
+				else 
+					if bouncer ~= nil then
+						dataSocket:setoption('tcp-nodelay',true)
+						dataSocket:send(bouncer)
+					end 
 				end
 			else
 				if server == nil then 
@@ -230,54 +265,69 @@ local function comm(r)
 			if dataSocket ~=nil then 
 				dataSocket:setoption('tcp-nodelay',true)
 				send = true
+				sendGreeting = true;
+				sendInit = false;
+				initSent = false;
+				dataCount = 0
+				bouncerConnected = false
 				emu.message("Connected")
 			end
 		else 
-			if dataCount == 0 then
-				dataSocket:settimeout(0)
-				data, status = dataSocket:receive(1)
+			if (bouncer ~= nil and bouncerConnected == false) then
+				data, status = dataSocket:receive("*l")
 				if data ~= nil then
-					dataCount = data:sub(1,1):byte()
-					if (dataCount == 0) then
-						send = true
-					end
+					print(data)
+					bouncer = data;
+					bouncerConnected = true
 					data = nil
 				end
-			end
-			if dataCount > 0 then
-				dataSocket:settimeout(0)
-				data, status = dataSocket:receive(dataCount)
-				if data ~= nil then
-					send = true
-					dataCount = 0	
+			else
+				if dataCount == 0 then
+					dataSocket:settimeout(0)
+					data, status = dataSocket:receive(1)
+					if data ~= nil then
+						dataCount = data:sub(1,1):byte()
+						if (dataCount == 0) then
+							send = true
+						end
+						data = nil
+					end
+				end
+				if dataCount > 0 then
+					dataSocket:settimeout(0)
+					data, status = dataSocket:receive(dataCount)
+					if data ~= nil then
+						send = true
+						dataCount = 0	
+					end
+				end
+				if status ~= "closed" then
+					if flowControl == FLOW_CONTROL_OPTION.NONE then 
+						messages = buildMessages()
+						if string.len(messages) > 0 then
+							dataSocket:settimeout(0)
+							dataSocket:send(string.char(string.len(messages))..messages)
+						end
+					elseif send == true then
+						messages = buildMessages()
+						dataSocket:settimeout(0)
+						dataSocket:send(string.char(string.len(messages))..messages)
+						send = false
+					end
 				end
 			end
 			if status == "closed" then
 				emu.message("Disconnected")
 				dataSocket:close()
 				dataSocket = nil
-				dataCount = 0
-			end
-			if flowControl == flowControlOptions.NONE then 
-				messages = buildMessages()
-				if string.len(messages) > 0 then
-					dataSocket:settimeout(0)
-					dataSocket:send(string.char(string.len(messages))..messages)
-				end
-			elseif send == true then
-				messages = buildMessages()
-				dataSocket:settimeout(0)
-				dataSocket:send(string.char(string.len(messages))..messages)
-				send = false
 			end
 		end
 		request = coroutine.yield(data)
+		data = nil
 	end
-
 end
 
 local _comm = coroutine.create(comm) 
-
 
 local function handleInput() 
 	if isClient then
