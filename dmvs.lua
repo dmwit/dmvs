@@ -166,6 +166,7 @@ local function consumeMessage(messages, index)
 		if not initSent then
 			sendInit = true
 		end
+		emu.message("Initialized")
 		return index+3
 	elseif messageType == MESSAGE.GREETING then
 		sendInit = true
@@ -221,9 +222,7 @@ local function buildMessages()
 		requestLoss = 0
 	end
 	if sendInit == true then
-		if not isClient then 
-			dataOut = dataOut..string.char(MESSAGE.INIT)..string.char(flowControl)..string.char(gameMode)
-		end
+		dataOut = dataOut..string.char(MESSAGE.INIT)..string.char(flowControl)..string.char(gameMode)
 		initSent = true
 		sendInit = false
 	end
@@ -233,102 +232,6 @@ local function buildMessages()
 	end
 	return dataOut
 end
-
-local function comm(r)
-	local dataCount = 0 
-	local data = nil
-	local send = true
-	while true do
-		if dataSocket == nil then
-			if isClient or bouncer ~= nil then
-				dataSocket = socket.tcp()
-				if not dataSocket:connect(host,port) then
-					dataSocket = nil
-				else 
-					if bouncer ~= nil then
-						dataSocket:setoption('tcp-nodelay',true)
-						dataSocket:send(bouncer)
-					end 
-				end
-			else
-				if server == nil then 
-					server = socket.tcp()
-					server:bind(host,port)
-					server:listen()
-				end
-				server:settimeout(0)
-				dataSocket = server:accept()
-				if dataSocket ~= nil then
-					server:close()
-					server=nil
-				end
-			end
-			if dataSocket ~=nil then 
-				dataSocket:setoption('tcp-nodelay',true)
-				send = true
-				sendGreeting = true;
-				sendInit = false;
-				initSent = false;
-				dataCount = 0
-				bouncerConnected = false
-				emu.message("Connected")
-			end
-		else 
-			if (bouncer ~= nil and bouncerConnected == false) then
-				data, status = dataSocket:receive("*l")
-				if data ~= nil then
-					print(data)
-					bouncer = data;
-					bouncerConnected = true
-					data = nil
-				end
-			else
-				if dataCount == 0 then
-					dataSocket:settimeout(0)
-					data, status = dataSocket:receive(1)
-					if data ~= nil then
-						dataCount = data:sub(1,1):byte()
-						if (dataCount == 0) then
-							send = true
-						end
-						data = nil
-					end
-				end
-				if dataCount > 0 then
-					dataSocket:settimeout(0)
-					data, status = dataSocket:receive(dataCount)
-					if data ~= nil then
-						send = true
-						dataCount = 0	
-					end
-				end
-				if status ~= "closed" then
-					if flowControl == FLOW_CONTROL_OPTION.NONE then 
-						messages = buildMessages()
-						if string.len(messages) > 0 then
-							dataSocket:settimeout(0)
-							dataSocket:send(string.char(string.len(messages))..messages)
-						end
-					elseif send == true then
-						messages = buildMessages()
-						dataSocket:settimeout(0)
-						dataSocket:send(string.char(string.len(messages))..messages)
-						send = false
-					end
-				end
-			end
-			if status == "closed" then
-				emu.message("Disconnected")
-				dataSocket:close()
-				dataSocket = nil
-			end
-		end
-		request = coroutine.yield(data)
-		data = nil
-	end
-end
-
-local _comm = coroutine.create(comm) 
 
 local function handleInput() 
 	if isClient then
@@ -487,7 +390,6 @@ if memory.readbyte(0xFFF0) == 0x2D then
 	memory.registerexec(0x9D01,recordStart)
 	memory.registerexec(0x8291,oneVirusPerLevel)
 	memory.registerexec(0x829C,oneVirusPerLevel)
-	
 else
 	memory.registerexec(0x814B,handleStart)
 	memory.registerexec(0x99DF,handleStart1)
@@ -505,6 +407,105 @@ else
 	memory.registerexec(0x8281,oneVirusPerLevel)
 	memory.registerexec(0x828C,oneVirusPerLevel)
 end
+
+local function comm(r)
+	local dataCount = 0 
+	local data = nil
+	local send = true
+	while true do
+		if dataSocket == nil then
+			if isClient or bouncer ~= nil then
+				dataSocket = socket.tcp()
+				if not dataSocket:connect(host,port) then
+					dataSocket = nil
+				else 
+					if bouncer ~= nil then
+						dataSocket:setoption('tcp-nodelay',true)
+						dataSocket:send(bouncer)
+					end 
+				end
+			else
+				if server == nil then 
+					server = socket.tcp()
+					server:bind(host,port)
+					server:listen()
+				end
+				server:settimeout(0)
+				dataSocket = server:accept()
+				if dataSocket ~= nil then
+					server:close()
+					server=nil
+				end
+			end
+			if dataSocket ~=nil then 
+				dataSocket:setoption('tcp-nodelay',true)
+				send = true
+				sendGreeting = true;
+				sendInit = false;
+				initSent = false;
+				dataCount = 0
+				bouncerConnected = false
+				if (bouncer == nil) then
+					emu.message("Connected")
+				end
+			end
+		else 
+			if (bouncer ~= nil and bouncerConnected == false) then
+				data, status = dataSocket:receive("*l")
+				if data ~= nil then
+					print(data)
+					bouncer = data;
+					bouncerConnected = true
+					data = nil
+					emu.message("Connected to relay")
+				end
+			else
+				if dataCount == 0 then
+					dataSocket:settimeout(0)
+					data, status = dataSocket:receive(1)
+					if data ~= nil then
+						dataCount = data:sub(1,1):byte()
+						if (dataCount == 0) then
+							send = true
+						end
+						data = nil
+					end
+				end
+				if dataCount > 0 then
+					dataSocket:settimeout(0)
+					data, status = dataSocket:receive(dataCount)
+					if data ~= nil then
+						send = true
+						dataCount = 0	
+					end
+				end
+				if status ~= "closed" then
+					if flowControl == FLOW_CONTROL_OPTION.NONE then 
+						messages = buildMessages()
+						if string.len(messages) > 0 then
+							dataSocket:settimeout(0)
+							dataSocket:send(string.char(string.len(messages))..messages)
+						end
+					elseif send == true then
+						messages = buildMessages()
+						dataSocket:settimeout(0)
+						dataSocket:send(string.char(string.len(messages))..messages)
+						send = false
+					end
+				end
+			end
+			if status == "closed" then
+				emu.message("Disconnected")
+				dataSocket:close()
+				dataSocket = nil
+			end
+		end
+		request = coroutine.yield(data)
+		data = nil
+	end
+end
+
+local _comm = coroutine.create(comm) 
 
 local lastState = 0
 local queueNext = false
