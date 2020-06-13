@@ -5,11 +5,11 @@ local GAME_MODE = {NORMAL=0,["REQUIRE-COMBOS"]=1}
 
 local isClient = false
 local host = "0.0.0.0"
-local bouncer = nil
+local relay = nil
 local port = 7777
 local gameMode = GAME_MODE.NORMAL
 local flowControl = 0
-local bouncerConnected = false
+local relayConnected = false
 local speedReset = 1
 
 if arg == nil then arg = io.read() end
@@ -19,10 +19,10 @@ for word in arg:gmatch("([^%s]+)") do table.insert(argWords, word) end
 local i = 1
 while i <= #argWords do
 	local word = argWords[i]
-	if word == "--bouncer" then
+	if word == "--relay" then
 		i = i+1
-		bouncer = argWords[i]
-		isClient = bouncer ~= "host"
+		relay = argWords[i]
+		isClient = relay ~= "host"
 	elseif word == "--port" then
 		i = i+1
 		port = tonumber(argWords[i])
@@ -33,7 +33,7 @@ while i <= #argWords do
 		flowControl = FLOW_CONTROL_OPTION[argWords[i]] ~= nil and FLOW_CONTROL_OPTION[argWords[i]] or 0
 	else
 		host = word
-		isClient = bouncer ~= "host"
+		isClient = relay ~= "host"
 	end
 	i = i+1
 end
@@ -318,8 +318,16 @@ local function collectGarbage4()
 	end
 end
 
-local baseLeftHalves = (memory.readbyte(0xFFF0) == 0x2D) and 0xA817 or 0xA7FD
-local baseRightHalves = (memory.readbyte(0xFFF0) == 0x2D) and 0xA820 or  0xA806
+local baseLeftHalves = 0xA7FD
+local baseRightHalves = 0xA806
+
+if memory.readbyte(0xFFF0) == 0x2D then 
+	baseLeftHalves = 0xA817
+	baseRightHalves = 0xA820
+elseif memory.readbyte(0xFFF0) == 0x4C then
+	baseLeftHalves = 0xA7F7
+	baseRightHalves = 0xA7FF
+end
 
 local function waitForNext()
 	if memory.readbyte(0x58) == (isClient and 4 or 5) then
@@ -390,6 +398,22 @@ if memory.readbyte(0xFFF0) == 0x2D then
 	memory.registerexec(0x9D01,recordStart)
 	memory.registerexec(0x8291,oneVirusPerLevel)
 	memory.registerexec(0x829C,oneVirusPerLevel)
+elseif memory.readbyte(0xFFF0) == 0x4C then
+	memory.registerexec(0x816B,handleStart)
+	memory.registerexec(0x99E3,handleStart1)
+	memory.registerexec(0x9692,handleContinue)
+	memory.registerexec(0xB2F9,handleContinue)
+	memory.registerexec(0xB7C6,handleInput)
+	memory.registerexec(0xB7D4,handleInput)
+	memory.registerexec(0x9C1A,collectGarbage2)
+	memory.registerexec(0x9C38,collectGarbage3)
+	memory.registerexec(0x9C59,collectGarbage4)
+	memory.registerexec(0x9C94,waitForNext)
+	memory.registerexec(0x9BF8,preventGarbage)
+	memory.registerexec(0x9E11,duplicateLevelData)
+	memory.registerexec(0x9CEA,recordStart)
+	memory.registerexec(0x82A1,oneVirusPerLevel)
+	memory.registerexec(0x82AC,oneVirusPerLevel)
 else
 	memory.registerexec(0x814B,handleStart)
 	memory.registerexec(0x99DF,handleStart1)
@@ -408,20 +432,24 @@ else
 	memory.registerexec(0x828C,oneVirusPerLevel)
 end
 
+
+local doExit = false
+
 local function comm(r)
 	local dataCount = 0 
 	local data = nil
 	local send = true
 	while true do
 		if dataSocket == nil then
-			if isClient or bouncer ~= nil then
+			if isClient or relay ~= nil then
 				dataSocket = socket.tcp()
 				if not dataSocket:connect(host,port) then
 					dataSocket = nil
+					doExit = true
 				else 
-					if bouncer ~= nil then
+					if relay ~= nil then
 						dataSocket:setoption('tcp-nodelay',true)
-						dataSocket:send(bouncer)
+						dataSocket:send(relay)
 					end 
 				end
 			else
@@ -438,24 +466,25 @@ local function comm(r)
 				end
 			end
 			if dataSocket ~=nil then 
+				doExit = false
 				dataSocket:setoption('tcp-nodelay',true)
 				send = true
 				sendGreeting = true;
 				sendInit = false;
 				initSent = false;
 				dataCount = 0
-				bouncerConnected = false
-				if (bouncer == nil) then
+				relayConnected = false
+				if (relay == nil) then
 					emu.message("Connected")
 				end
 			end
 		else 
-			if (bouncer ~= nil and bouncerConnected == false) then
+			if (relay ~= nil and relayConnected == false) then
 				data, status = dataSocket:receive("*l")
 				if data ~= nil then
 					print(data)
-					bouncer = data;
-					bouncerConnected = true
+					relay = data;
+					relayConnected = true
 					data = nil
 					emu.message("Connected to relay")
 				end
@@ -496,6 +525,7 @@ local function comm(r)
 			end
 			if status == "closed" then
 				emu.message("Disconnected")
+				doExit = relay ~= nil or isClient
 				dataSocket:close()
 				dataSocket = nil
 			end
@@ -510,7 +540,8 @@ local _comm = coroutine.create(comm)
 local lastState = 0
 local queueNext = false
 
-while true do 
+
+while not doExit do 
     if memory.readbyte(0x46) == 4 then
 		newState = memory.readbyte(getReadAddress(0x0317))
 		if newState == 1 and lastState == 0 then
@@ -601,3 +632,6 @@ while true do
 	end
 	emu.frameadvance()
 end
+
+emu.message("No Connection, Exiting Net Play")
+
