@@ -272,7 +272,7 @@ end
 
 local function handleStart() 
 	if not isClient and remoteGameState == 0x11 then
-		if 	memory.readbyte(0xbaf) == 0x11 and AND(memory.readword(0x1dd9),0x1080) > 0 then
+		if memory.readbyte(0xbaf) == 0x11 and AND(memory.readword(0x1dd9),0x1080) > 0 then
 			requestStart = 1
 			startSeed = {string.char(memory.readbyte(0x9e)),string.char(memory.readbyte(0x9f)) }
 		end
@@ -289,7 +289,7 @@ end
 local function handleContinue() 
 	if not isClient then
 		if AND(memory.readword(0x0276),0x1080) > 0 then
-            requestContinue = 1   
+			requestContinue = 1   
 			startSeed = {string.char(memory.readbyte(0x9e)),string.char(memory.readbyte(0x9f)) }
 		end
 	else 
@@ -471,9 +471,8 @@ end
 local _comm = coroutine.create(comm) 
 
 local lastState = 0
-local queueNext = false
 
-while true do
+while not doExit do
 	if memory.readbyte(0xBAF) == 0x07 then
 		newState = memory.readbyte(getReadAddress(0x0305))
 		if (newState == 6 and lastState == 5) or (newState == 0x0a and lastState ~= 0x0a) then
@@ -529,3 +528,5 @@ while true do
 	end
 	emu.frameadvance()
 end
+
+emu.message("No Connection, Exiting Net Play")
