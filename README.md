@@ -40,24 +40,22 @@ The other choice is a bit more complicated, and must be made by the host. If the
 
 You may supply the following arguments, in any order, separated by spaces. All of them are optional.
 
-* `--bouncer HOST` Connect to the `HOST` (a domain name or IP address), and use it as a bouncer. If not specified, the script will operate in direct mode instead.
+* `--relay host RELAY` Connect to the host address, RELAY (a domain name or IP address), and use it as a relay. If not specified, the script will operate in direct mode instead.
 
-    Currently this flag is ignored: the script always runs in direct mode.
+    This will output a connection number that should be provided to the client player to set up their side of the connection through the relay
 
 * `--port N` In direct mode, listen on this port; in bouncer mode, connect to this port of the bouncer. Defaults to 7777.
 * `--require-combo` Instead of traditional vs. mode, play a modified mode where you win by clearing all viruses with a single combo. Any clear that doesn't complete the level will instead reset the level.
-
-    Currently this flag is ignored: the script always runs in traditional vs. mode.
 
 You will be player 1.
 
 ### Client mode
 
-You must supply a host (a domain name or IP address in direct mode, or a connection number supplied to you by the host in bouncer mode). You may also supply the following arguments, in any order, separated by spaces, either before or after the host. All of them are optional.
+You must supply a host (a domain name or IP address in direct mode, or a connection number supplied to you by the host in relay mode). You may also supply the following arguments, in any order, separated by spaces, either before or after the host. All of them are optional.
 
-* `--bouncer HOST` Connect to the `HOST` (a domain name or IP address), and use it as a bouncer.  If not specified, the script will operate in direct mode instead.
+* `--relay CONNECTION-NUMBER RELAY` Connect to the host address, RELAY (a domain name or IP address), and use it as a relay.  If not specified, the script will operate in direct mode instead.
 
-    Currently this flag is ignored: the script always runs in direct mode.
+    The host player will connect to the relay first and receive a connection number that you will enter for the CONNECTION-NUMBER parameter
 
 * `--port N` Connect to this port on the host (in direct mode) or bouncer (in bouncer mode). Defaults to 7777.
 * `--require-combo` You may specify this, but it is ignored. Whether combos are required or not is chosen by the host.
