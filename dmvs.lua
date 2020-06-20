@@ -633,5 +633,6 @@ while not doExit do
 	emu.frameadvance()
 end
 
+
 emu.message("No Connection, Exiting Net Play")
 
