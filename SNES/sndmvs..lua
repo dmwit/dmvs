@@ -307,11 +307,11 @@ end
 local function collectGarbage() 
 	if (memory.getregister('x') == 0) == isClient then
 		if memory.readbyte(getWriteAddress(0x32e)) == 2 then
-			table.insert(keyFramesOut,string.char(2)..string.char(memory.getregister('y'))..string.char(memory.readbyte(getWriteAddress(0x335)))..string.char(memory.readbyte(getWriteAddress(0x336))))
+			table.insert(keyFramesOut,string.char(2)..string.char(memory.getregister('y'))..string.char(memory.readbyte(getWriteAddress(0x334)))..string.char(memory.readbyte(getWriteAddress(0x335))))
 		elseif	memory.readbyte(getWriteAddress(0x32e)) == 3 then
-			table.insert(keyFramesOut,string.char(3)..string.char(memory.getregister('y'))..string.char(memory.readbyte(getWriteAddress(0x335)))..string.char(memory.readbyte(getWriteAddress(0x336)))..string.char(memory.readbyte(getWriteAddress(0x337))))
+			table.insert(keyFramesOut,string.char(3)..string.char(memory.getregister('y'))..string.char(memory.readbyte(getWriteAddress(0x334)))..string.char(memory.readbyte(getWriteAddress(0x336)))..string.char(memory.readbyte(getWriteAddress(0x335))))
 		else
-			table.insert(keyFramesOut,string.char(4)..string.char(memory.getregister('y'))..string.char(memory.readbyte(getWriteAddress(0x335)))..string.char(memory.readbyte(getWriteAddress(0x336)))..string.char(memory.readbyte(getWriteAddress(0x337)))..string.char(memory.readbyte(getWriteAddress(0x338))))
+			table.insert(keyFramesOut,string.char(4)..string.char(memory.getregister('y'))..string.char(memory.readbyte(getWriteAddress(0x334)))..string.char(memory.readbyte(getWriteAddress(0x335)))..string.char(memory.readbyte(getWriteAddress(0x336)))..string.char(memory.readbyte(getWriteAddress(0x337))))
 		end
 	end
 end
@@ -361,6 +361,7 @@ memory.registerexec(0x82C0EC,handleStart)
 memory.registerexec(0x829243,handleContinue)
 memory.registerexec(0x82919A,handleContinue)
 memory.registerexec(0x829db7,collectGarbage)
+memory.registerexec(0x829de5,collectGarbage)
 memory.registerexec(0x828c9f,preventLocalGarbage)
 memory.registerexec(0x828d46,handleLocalNext)
 
@@ -518,7 +519,7 @@ while not doExit do
 					memory.writebyte(firstGarbage+6,garbageIn:sub(6,6):byte())
 				end
 			end
-			memory.writebyte(getWriteAddress(0x305),0x0c) 
+			memory.writebyte(getWriteAddress(0x305),0x08)
 		end
 	else
 		remoteCurrent = nil
