@@ -19,7 +19,7 @@ local arg = ""
 	to act as "host" for a relay connection, run the script before the client and enter the following.
 		arg = "--relay host 3.91.189.195"
 
-	to connect as a relay "cleint", get the "host" to tell you the connection number that appears in the console output when they run the script
+	to connect as a relay "client", get the "host" to tell you the connection number that appears in the console output when they run the script
 		arg = "--relay <connection number> 3.91.189.195"
 ]]--
 
