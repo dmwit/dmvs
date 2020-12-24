@@ -8,6 +8,7 @@ local arg = ""
 
 --[[
 	arg values
+	------------
 	
 	to host: leave it empty
 		arg = ""
@@ -23,24 +24,7 @@ local arg = ""
 ]]--
 
 
-----------DIRECT-------------
---If using a direct P2P connection.
---HOST--
 local host = "0.0.0.0"
-
---CLIENT--
---local host = "127.0.0.1"
-
-
-----------RELAY--------------
---If connecting through the relay server. Both the host player and the client player should uncomment the following line.
---local host = "3.91.189.195"
-
---HOST--
---local relay = "host"
-
---CLIENT--
---local relay = "0" -- Zero is probably the correct value but this should be set the the value that the host player receives in their Console Output window.
 
 -----------------------------
 
