@@ -4,7 +4,7 @@ local FLOW_CONTROL_OPTION = {NONE=0,["ONE-TO-ONE"]=1}
 local GAME_MODE = {NORMAL=0}
 
 
-local arg = "--relay 0 3.91.189.195"
+local arg = ""
 
 --[[
 	arg values
