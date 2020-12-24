@@ -3,28 +3,77 @@ local socket =  require("socket.core")
 local FLOW_CONTROL_OPTION = {NONE=0,["ONE-TO-ONE"]=1}
 local GAME_MODE = {NORMAL=0}
 
-----------DIRECT-------------
 
---HOSTING--
-local isClient = false
+local arg = "--relay 0 3.91.189.195"
+
+--[[
+	arg values
+	
+	to host: leave it empty
+		arg = ""
+	
+	to be a direct client, make it the ip of the host
+		arg = "127.0.0.1"
+	
+	to act as "host" for a relay connection, run the script before the client and enter the following.
+		arg = "--relay host 3.91.189.195"
+
+	to connect as a relay "cleint", get the "host" to tell you the connection number that appears in the console output when they run the script
+		arg = "--relay <connection number> 3.91.189.195"
+]]--
+
+
+----------DIRECT-------------
+--If using a direct P2P connection.
+--HOST--
 local host = "0.0.0.0"
 
 --CLIENT--
---local isClient = true
 --local host = "127.0.0.1"
 
 
 ----------RELAY--------------
-
+--If connecting through the relay server. Both the host player and the client player should uncomment the following line.
 --local host = "3.91.189.195"
 
---HOSTING--
+--HOST--
 --local relay = "host"
 
 --CLIENT--
---local relay = "0"
+--local relay = "0" -- Zero is probably the correct value but this should be set the the value that the host player receives in their Console Output window.
 
 -----------------------------
+
+local argWords = {}
+for word in arg:gmatch("([^%s]+)") do table.insert(argWords, word) end
+local i = 1
+while i <= #argWords do
+	local word = argWords[i]
+	if word == "--relay" then
+		i = i+1
+		relay = argWords[i]
+		isClient = relay ~= "host"
+	elseif word == "--port" then
+		i = i+1
+		port = tonumber(argWords[i])
+	elseif word == "--require-combo" then
+		gameMode = GAME_MODE["REQUIRE-COMBOS"]
+	elseif word == "--flow-control" then
+		i = i+1
+		flowControl = FLOW_CONTROL_OPTION[argWords[i]] ~= nil and FLOW_CONTROL_OPTION[argWords[i]] or 0
+	else
+		host = word
+		isClient = relay ~= "host"
+	end
+	i = i+1
+end
+
+-- erase all traces of our temporary variables
+argWord = nil
+i = nil
+word = nil
+
+local isClient = (host ~= "0.0.0.0") and (relay ~= "host")
 
 local port = 7777
 local gameMode = GAME_MODE.NORMAL
