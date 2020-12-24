@@ -10,7 +10,7 @@ local arg = ""
 	arg values
 	------------
 	
-	to host: leave it empty
+	to host a direct connection, leave it empty
 		arg = ""
 	
 	to be a direct client, make it the ip of the host
