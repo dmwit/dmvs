@@ -326,7 +326,7 @@ if memory.readbyte(0xFFF0) == 0x2D then
 	baseRightHalves = 0xA820
 elseif memory.readbyte(0xFFF0) == 0x4C then
 	baseLeftHalves = 0xA7F7
-	baseRightHalves = 0xA7FF
+	baseRightHalves = 0xA800
 end
 
 local function waitForNext()
