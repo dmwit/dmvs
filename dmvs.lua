@@ -245,7 +245,7 @@ local function handleInput()
 			end
 		elseif state > 1 then
 			p1Input = memory.readbyte(0xF5)
-			dPad= p1Input % 8
+			dPad= p1Input % 0x10
 			startSelect = (p1Input % 32) - dPad
 			memory.writebyte(0xF6,p1Input-startSelect)
 			if memory.readbyte(0x45) ~= 0xBF then
@@ -256,7 +256,7 @@ local function handleInput()
 		end
 	elseif memory.readbyte(0x45) == 0xBF then
 		p1Input = memory.readbyte(0xF5)
-		dPad= p1Input % 8
+		dPad= p1Input % 0x10
 		startSelect = (p1Input % 32) - dPad
 		memory.writebyte(0xF5,p1Input-startSelect)
 	end
