@@ -399,7 +399,9 @@ if memory.readbyte(0xFFF0) == 0x2D then
 	memory.registerexec(0x815B,handleStart)
 	memory.registerexec(0x99F9,handleStart1)
 	memory.registerexec(0x9675,handleContinue)
+	memory.registerexec(0x967B,handleContinue2)
 	memory.registerexec(0xB31A,handleContinue)
+	memory.registerexec(0xB322,handleContinue2)
 	memory.registerexec(0xB7E7,handleInput)	
 	memory.registerexec(0xB7F5,handleInput)
 	memory.registerexec(0x9C30,collectGarbage2)
@@ -409,6 +411,7 @@ if memory.readbyte(0xFFF0) == 0x2D then
 	memory.registerexec(0x9C00,waitForNext2)
 	memory.registerexec(0x9C25,processNext)
 	memory.registerexec(0x9C0E,preventGarbage)
+	memory.registerexec(0x8DC9,landPill)
 else
 	memory.registerexec(0x814B,handleStart)
 	memory.registerexec(0x99DF,handleStart1)
